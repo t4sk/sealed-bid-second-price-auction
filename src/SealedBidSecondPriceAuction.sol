@@ -28,7 +28,7 @@ contract SealedBidSecondPriceAuction {
         uint256 minBid;
         uint256[2] bids;
         address[2] bidders;
-        // commit, and reveal deadlines
+        // commit and reveal deadlines
         uint32[2] deadlines;
     }
 
@@ -51,7 +51,15 @@ contract SealedBidSecondPriceAuction {
         nft = IERC721(_nft);
     }
 
-    function start(uint256 nftId, uint256 minBid) external lock {
+    function get(uint256 id) external view returns (Auction memory) {
+        return auctions[id];
+    }
+
+    function start(uint256 nftId, uint256 minBid)
+        external
+        lock
+        returns (uint256)
+    {
         uint256 id = ++count;
         // TODO: data exists after delete?
         auctions[id] = Auction({
@@ -69,6 +77,7 @@ contract SealedBidSecondPriceAuction {
         });
         nft.transferFrom(msg.sender, address(this), nftId);
         emit Start(id, msg.sender, nftId, minBid);
+        return id;
     }
 
     function stop(uint256 id) external lock {
@@ -95,18 +104,22 @@ contract SealedBidSecondPriceAuction {
 
     function commit(uint256 id, bytes32 hash) external lock {
         Auction memory auc = auctions[id];
+        require(auc.creator != address(0), "auction does not exist");
         require(block.timestamp < auc.deadlines[0], "commit deadline expired");
         commits[id][msg.sender] = hash;
         emit Commit(id, msg.sender, hash);
     }
 
+    // TODO: not second price if first bidder is highest
+    // TODO: is this same as english auction?
     // TODO: can be front runned?
     function reveal(uint256 id, address bidder, uint256 amount, uint256 salt)
         external
         lock
     {
-        Auction storage auc = auctions[id];
         require(bidder != address(0), "bidder = 0 address");
+        Auction storage auc = auctions[id];
+        require(auc.creator != address(0), "auction does not exist");
         require(amount >= auc.minBid, "bid < min");
         require(
             auc.deadlines[0] < block.timestamp, "commit deadline not expired"

@@ -41,10 +41,10 @@ contract ERC20 {
         return true;
     }
 
-    function mint(uint256 amount) external {
-        balanceOf[msg.sender] += amount;
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
         totalSupply += amount;
-        emit Transfer(address(0), msg.sender, amount);
+        emit Transfer(address(0), to, amount);
     }
 
     function burn(uint256 amount) external {
